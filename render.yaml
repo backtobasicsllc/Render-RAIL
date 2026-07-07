@@ -1,0 +1,17 @@
+# Render.com blueprint — one-click deploy with persistent storage.
+services:
+  - type: web
+    name: render-rail-team
+    runtime: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: DATA_DIR
+        value: /var/rail/data
+      - key: OUT_DIR
+        value: /var/rail/outputs
+    disk:
+      name: rail-storage
+      mountPath: /var/rail
+      sizeGB: 10
