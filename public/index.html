@@ -1014,6 +1014,28 @@ $('#prRefFile').addEventListener('change', async () => {
     refresh();
   } catch (err) { $('#prRefStatus').textContent = err.message; }
 });
+$('#prRefFile').addEventListener('change', async () => {
+  const f = $('#prRefFile').files[0];
+  if (!f) return;
+  const p = prList[+$('#prSelect').value];
+  if (!p) return;
+  $('#prRefStatus').textContent = 'uploading…';
+  try {
+    const data = await new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(String(r.result).split(',')[1]);
+      r.onerror = () => rej(new Error('Could not read the file.'));
+      r.readAsDataURL(f);
+    });
+    await api('/api/presets/' + encodeURIComponent(p.id) + '/reference', 'POST', { data, mime: f.type });
+    $('#prRefStatus').textContent = '✓ reference set — ' + f.name;
+    flash('#prFlash', 'Master reference uploaded for ' + p.name + '.', true);
+    refresh();
+  } catch (err) {
+    $('#prRefStatus').textContent = 'upload failed';
+    flash('#prFlash', err.message, false);
+  }
+});
 $('#prSave').addEventListener('click', async () => {
   stashPr();
   try { await api('/api/presets','POST',{presets:prList}); flash('#prFlash','Saved.',true); refresh(); }
