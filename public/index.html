@@ -279,7 +279,11 @@
             <div class="cmsg assistant"><div class="cbody">Drop a script, a hook idea, or a full brief — I'll break it into HeyGen segments, image prompts, Grok clips, and the voiceover, all following the character bible. Every chat saves automatically.</div></div>
           </div>
           <div class="chatin">
+            <div id="chatAttach" style="display:none;gap:8px;padding:0 0 8px;flex-wrap:wrap"></div>
             <textarea id="chatIn" rows="3" placeholder="Paste a script or type a message…  (Enter to send, Shift+Enter for a new line)"></textarea>
+            <button class="mini" id="chatPick" type="button" title="Attach images — set photos or bad generations to fix">📎</button>
+            <button class="mini" id="chatUseRef" type="button" title="Attach this character's master reference image">＋ ref</button>
+            <input type="file" id="chatFiles" accept="image/png,image/jpeg,image/webp" multiple hidden>
             <button class="fire csend" id="chatSend">Send</button>
           </div>
           <div class="flash" id="dFlash"></div>
@@ -687,7 +691,11 @@ async function openChat(idc) {
     currentChatId = chat.id; blockRegistry = [];
     $('#chatLog').innerHTML = '';
     for (const m of chat.messages) {
-      if (m.role === 'user') addMsg('user', esc(m.content));
+      if (m.role === 'user') {
+        const thumbs = (m.images || []).filter(x => !x.startsWith('__ref__')).map(x => `<img src="/files/${encodeURI(x)}" style="height:52px;border-radius:6px;border:1px solid var(--line2);margin:0 6px 6px 0">`).join('');
+        const refBadge = (m.images || []).some(x => x.startsWith('__ref__')) ? '<span class="mini" style="border-color:var(--nano);color:var(--nano);margin-bottom:6px;display:inline-block">master reference attached</span><br>' : '';
+        addMsg('user', refBadge + (thumbs ? '<div>' + thumbs + '</div>' : '') + esc(m.content));
+      }
       else addMsg('assistant', renderAssistant(m.content));
     }
     if ($('#dPreset').value !== chat.presetId && [...$('#dPreset').options].some(o=>o.value===chat.presetId)) {
@@ -701,11 +709,13 @@ async function sendChat() {
   const text = $('#chatIn').value.trim();
   if (!text) return;
   $('#chatIn').value = '';
-  addMsg('user', esc(text));
+  const nAtt = chatImages.length + (useMasterRef ? 1 : 0);
+  addMsg('user', (nAtt ? `<span class="mini" style="border-color:var(--nano);color:var(--nano);margin-right:8px">${nAtt} image${nAtt>1?'s':''} attached</span>` : '') + esc(text));
   const wait = addMsg('assistant', '<span class="thinking">Director is writing</span>');
   $('#chatSend').disabled = true;
   try {
-    const r = await api('/api/chat', 'POST', { presetId: $('#dPreset').value, chatId: currentChatId, message: text });
+    const r = await api('/api/chat', 'POST', { presetId: $('#dPreset').value, chatId: currentChatId, message: text, images: chatImages, useRef: useMasterRef });
+    chatImages = []; useMasterRef = false; renderAttach();
     currentChatId = r.chatId;
     wait.querySelector('.cbody').innerHTML = renderAssistant(r.reply);
     loadChatIndex();
@@ -715,6 +725,42 @@ async function sendChat() {
   $('#chatSend').disabled = false;
   $('#chatLog').scrollTop = $('#chatLog').scrollHeight;
 }
+let chatImages = []; let useMasterRef = false;
+function renderAttach() {
+  const box = $('#chatAttach');
+  const chips = [];
+  if (useMasterRef) chips.push(`<span class="mini" style="border-color:var(--nano);color:var(--nano)">master reference ✓ <b data-unref style="cursor:pointer">×</b></span>`);
+  chatImages.forEach((im, i) => chips.push(`<span style="position:relative;display:inline-block"><img src="${im.data}" style="height:44px;border-radius:6px;border:1px solid var(--line2)"><b data-unimg="${i}" style="position:absolute;top:-6px;right:-6px;background:var(--bad);color:#fff;border-radius:50%;width:16px;height:16px;font-size:11px;line-height:16px;text-align:center;cursor:pointer">×</b></span>`));
+  box.innerHTML = chips.join('');
+  box.style.display = chips.length ? 'flex' : 'none';
+}
+$('#chatAttach').addEventListener('click', e => {
+  if (e.target.dataset.unimg !== undefined) { chatImages.splice(+e.target.dataset.unimg, 1); renderAttach(); }
+  if (e.target.dataset.unref !== undefined) { useMasterRef = false; renderAttach(); }
+});
+$('#chatPick').addEventListener('click', () => $('#chatFiles').click());
+$('#chatUseRef').addEventListener('click', () => {
+  const p = state?.presets?.find(x => x.id === $('#dPreset').value);
+  if (!p?.hasRef) return flash('#dFlash', 'Upload a master reference for this character first (Edit bibles).', false);
+  useMasterRef = true; renderAttach();
+});
+$('#chatFiles').addEventListener('change', async () => {
+  for (const f of [...$('#chatFiles').files].slice(0, 6 - chatImages.length)) {
+    const data = await new Promise(res => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, 1280 / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        res(c.toDataURL('image/jpeg', 0.87));
+      };
+      img.src = URL.createObjectURL(f);
+    });
+    chatImages.push({ data, mime: 'image/jpeg' });
+  }
+  $('#chatFiles').value = ''; renderAttach();
+});
 $('#chatSend').addEventListener('click', sendChat);
 $('#chatIn').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); } });
 $('#chatNew').addEventListener('click', newChat);

@@ -79,7 +79,20 @@ function saveProfile(userId, prof) { fs.writeFileSync(profilePath(userId), encry
 function loadPresets(userId) {
   const p = path.join(PRESETS_DIR, userId + '.json');
   if (!fs.existsSync(p)) { saveJson(p, DEFAULT_PRESETS); return structuredClone(DEFAULT_PRESETS); }
-  return loadJson(p, DEFAULT_PRESETS);
+  const list = loadJson(p, DEFAULT_PRESETS);
+  // migrate existing accounts: if a stored default character still has the old short seed
+  // (bible edits could never save before the presets fix), refresh it from the new full default
+  let changed = false;
+  for (const d of DEFAULT_PRESETS) {
+    const mine = list.find(x => x.id === d.id);
+    if (mine && d.character.length > 5000 && (mine.character || '').length < 2000 && !(mine.character || '').includes('MASTER PRODUCTION BIBLE')) {
+      mine.character = d.character;
+      mine.rules = structuredClone(d.rules);
+      changed = true;
+    }
+  }
+  if (changed) saveJson(p, list);
+  return list;
 }
 function savePresets(userId, presets) { saveJson(path.join(PRESETS_DIR, userId + '.json'), presets); }
 
@@ -352,11 +365,14 @@ app.get('/api/presets', requireAuth, (req, res) => res.json({ presets: loadPrese
 app.post('/api/presets', requireAuth, (req, res) => {
   const list = req.body?.presets;
   if (!Array.isArray(list) || list.length > 30) return res.status(400).json({ error: 'Invalid presets.' });
+  const RULE_KEYS = ['nano', 'veo', 'grok', 'heygen', 'eleven'];
   for (const p of list) {
     if (!p.id) p.id = slug(p.name || id(3), 30);
     p.name = String(p.name || 'Untitled').slice(0, 60);
-    p.character = String(p.character || '').slice(0, 4000);
-    p.rules = Object.fromEntries(ENGINES.map(e => [e, String(p.rules?.[e] || '').slice(0, 4000)]));
+    p.character = String(p.character || '').slice(0, 40000);
+    const rules = {};
+    for (const k of RULE_KEYS) rules[k] = String(p.rules?.[k] || '').slice(0, 20000);
+    p.rules = rules;
   }
   savePresets(req.userId, list);
   res.json({ ok: true });
@@ -425,11 +441,32 @@ app.delete('/api/chats/:id', requireAuth, (req, res) => {
 
 app.post('/api/chat', requireAuth, async (req, res) => {
   try {
-    const { presetId, chatId, message } = req.body || {};
+    const { presetId, chatId, message, images, useRef } = req.body || {};
     const preset = loadPresets(req.userId).find(p => p.id === presetId);
     if (!preset) return res.status(400).json({ error: 'Pick a character preset.' });
     const text = String(message || '').trim().slice(0, 40000);
     if (!text) return res.status(400).json({ error: 'Say something first.' });
+
+    // save any attached images to the user's outputs (served via the auth-gated /files route)
+    const imgFiles = [];
+    const imgDir = path.join(OUT_DIR, req.userId, 'director-refs');
+    if (Array.isArray(images) && images.length) {
+      fs.mkdirSync(imgDir, { recursive: true });
+      for (const im of images.slice(0, 6)) {
+        if (!im?.data) continue;
+        const ext = /png/.test(im.mime || '') ? 'png' : 'jpg';
+        const rel = path.posix.join(req.userId, 'director-refs', `${id(5)}.${ext}`);
+        fs.writeFileSync(path.join(OUT_DIR, rel), Buffer.from(String(im.data).replace(/^data:[^,]+,/, ''), 'base64'));
+        imgFiles.push(rel);
+      }
+    }
+    // one-tap master reference attach
+    if (useRef) {
+      for (const ext of ['png', 'jpg', 'jpeg', 'webp']) {
+        const rp = path.join(REFS_DIR, req.userId, `${presetId}.${ext}`);
+        if (fs.existsSync(rp)) { imgFiles.unshift(path.posix.join('__ref__', req.userId, `${presetId}.${ext}`)); break; }
+      }
+    }
 
     const chats = loadChats(req.userId);
     let chat = chatId ? chats.find(c => c.id === chatId) : null;
@@ -437,10 +474,26 @@ app.post('/api/chat', requireAuth, async (req, res) => {
       chat = { id: id(), presetId, title: text.replace(/\s+/g, ' ').slice(0, 48), messages: [], createdAt: Date.now() };
       chats.unshift(chat);
     }
-    chat.messages.push({ role: 'user', content: text });
+    chat.messages.push({ role: 'user', content: text, images: imgFiles.length ? imgFiles : undefined });
 
     const prof2 = loadProfile(req.userId);
-    const history = chat.messages.slice(-30).map(m => ({ role: m.role, content: m.content }));
+    const recent = chat.messages.slice(-30);
+    const lastWithImages = recent.filter(m => m.images?.length).slice(-4); // vision cost control: last 4 image messages
+    const history = recent.map(m => {
+      if (!m.images?.length || !lastWithImages.includes(m)) return { role: m.role, content: m.content };
+      const blocks = [];
+      for (const rel of m.images.slice(0, 6)) {
+        try {
+          const abs = rel.startsWith('__ref__') ? path.join(REFS_DIR, rel.replace('__ref__/', '')) : path.join(OUT_DIR, rel);
+          const buf = fs.readFileSync(abs);
+          if (buf.length > 8 * 1024 * 1024) continue;
+          const mt = /\.png$/i.test(abs) ? 'image/png' : /\.webp$/i.test(abs) ? 'image/webp' : 'image/jpeg';
+          blocks.push({ type: 'image', source: { type: 'base64', media_type: mt, data: buf.toString('base64') } });
+        } catch { /* skip unreadable */ }
+      }
+      blocks.push({ type: 'text', text: m.content || '(image attached)' });
+      return { role: m.role, content: blocks };
+    });
     const reply = await E.runChat({ keys: prof2.keys, system: buildChatSystem(preset), messages: history, model: prof2.models.director });
 
     chat.messages.push({ role: 'assistant', content: reply });
