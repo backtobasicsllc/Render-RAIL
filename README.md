@@ -14,6 +14,10 @@ Railway also works (Dockerfile included): New Project → Deploy from GitHub →
 
 **Back up** the disk occasionally: `data/` holds accounts, encrypted keys, chats, and character bibles; `outputs/` holds everyone's files. `data/.secret` is the encryption key.
 
+## Cheapest path: one Kie.ai key
+
+Instead of funding OpenAI + xAI + Gemini separately, add a single **Kie.ai** key (kie.ai → sign up → 5,000 free credits, no card → API keys → create). It covers image generation (Nano Banana) and video (Veo, Grok image-to-video) from one pay-as-you-go wallet at roughly 30–80% below direct API rates — Nano Banana images ~$0.02, Veo Fast 8s video ~$0.40. In the clip cards and Images/Video tabs, the engine dropdowns default to **Kie**. HeyGen + ElevenLabs still use their own keys (they run off your existing subscriptions).
+
 ## Per-user setup (each person, once)
 
 1. Register → **Settings** → paste your keys: OpenAI (ChatGPT images), Gemini (Nano Banana + Veo), xAI (Grok), HeyGen, ElevenLabs, Anthropic (the Director)

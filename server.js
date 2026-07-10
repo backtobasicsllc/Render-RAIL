@@ -51,23 +51,28 @@ function decrypt(b64, fb) {
 }
 
 const DEFAULT_PROFILE = {
-  keys: { gemini: '', xai: '', heygen: '', eleven: '', anthropic: '', openai: '' },
-  models: { nano: 'gemini-3-pro-image-preview', gptimage: 'gpt-image-1', veo: 'veo-3.1-generate-preview', grok: 'grok-imagine-video', eleven: 'eleven_turbo_v2_5' },
+  keys: { kie: '', kieImage: '', kieVideo: '', gemini: '', xai: '', heygen: '', eleven: '', anthropic: '', openai: '' },
+  models: { nano: 'gemini-3-pro-image-preview', gptimage: 'gpt-image-1', veo: 'veo-3.1-generate-preview', grok: 'grok-imagine-video', eleven: 'eleven_turbo_v2_5',
+    kieImage: 'google/nano-banana', kieVideo: 'veo3_fast', director: 'claude-sonnet-4-6' },
   eleven: { stability: 0.55, similarity: 0.75, style: 0.15, speakerBoost: false },
   picks: { heygenAvatar: '', heygenVoice: '', elevenVoice: '' }
 };
 
 function profilePath(userId) { return path.join(KEYS_DIR, userId + '.enc'); }
+function fixupModels(prof) {
+  if (prof?.models?.kieVideo === 'veo3-fast') prof.models.kieVideo = 'veo3_fast';
+  return prof;
+}
 function loadProfile(userId) {
   const p = profilePath(userId);
   if (!fs.existsSync(p)) return structuredClone(DEFAULT_PROFILE);
   const prof = decrypt(fs.readFileSync(p, 'utf8'), DEFAULT_PROFILE);
-  return Object.assign(structuredClone(DEFAULT_PROFILE), prof, {
+  return fixupModels(Object.assign(structuredClone(DEFAULT_PROFILE), prof, {
     keys: { ...DEFAULT_PROFILE.keys, ...(prof.keys || {}) },
     models: { ...DEFAULT_PROFILE.models, ...(prof.models || {}) },
     eleven: { ...DEFAULT_PROFILE.eleven, ...(prof.eleven || {}) },
     picks: { ...DEFAULT_PROFILE.picks, ...(prof.picks || {}) }
-  });
+  }));
 }
 function saveProfile(userId, prof) { fs.writeFileSync(profilePath(userId), encrypt(prof)); }
 
@@ -113,8 +118,8 @@ function saveJobs() {
   saveTimer = setTimeout(() => saveJson(JOBS_PATH, jobs), 400);
 }
 
-const ENGINES = ['nano', 'gptimage', 'veo', 'grok', 'heygen', 'eleven'];
-const CONCURRENCY = { nano: 3, gptimage: 3, veo: 2, grok: 2, heygen: 2, eleven: 3 }; // global, per engine
+const ENGINES = ['nano', 'gptimage', 'kieimage', 'veo', 'grok', 'kievideo', 'heygen', 'eleven'];
+const CONCURRENCY = { nano: 3, gptimage: 3, kieimage: 4, veo: 2, grok: 2, kievideo: 3, heygen: 2, eleven: 3 }; // global, per engine
 
 function tick() {
   for (const engine of ENGINES) {
@@ -147,6 +152,8 @@ async function startJob(job) {
     const resolveRef = rel => path.join(REFS_DIR, rel);
     if (job.engine === 'nano') await E.runNano(job, keys, out, resolveRef);
     else if (job.engine === 'gptimage') await E.runGptImage(job, keys, out, resolveRef);
+    else if (job.engine === 'kieimage') await E.runKieImage(job, keys, out, resolveRef);
+    else if (job.engine === 'kievideo') await E.runKieVideo(job, keys, out, onPolling, resolveImage);
     else if (job.engine === 'veo') await E.runVeo(job, keys, out, onPolling, resolveImage);
     else if (job.engine === 'grok') await E.runGrok(job, keys, out, onPolling, resolveImage);
     else if (job.engine === 'heygen') {
@@ -163,7 +170,7 @@ async function startJob(job) {
       jobs.push({
         id: id(), userId: job.userId, batchId: job.batchId, batchSlug: job.batchSlug,
         index: job.index, variant: job.variant, engine: c.videoEngine,
-        prompt: c.videoPrompt || job.prompt, model: prof.models[c.videoEngine],
+        prompt: c.videoPrompt || job.prompt, model: prof.models[c.videoEngine === 'kievideo' ? 'kieVideo' : c.videoEngine === 'kieimage' ? 'kieImage' : c.videoEngine],
         aspectRatio: c.aspectRatio || job.aspectRatio || '9:16',
         resolution: (c.videoEngine === 'grok' || c.videoEngine === 'veo') ? (c.resolution || '720p') : undefined,
         duration: c.videoEngine === 'grok' ? (c.duration || 6) : undefined,
@@ -245,6 +252,52 @@ app.post('/api/logout', (req, res) => {
   res.json({ ok: true });
 });
 
+// ---- claude model catalog (from the user's own Anthropic account)
+app.get('/api/catalog/claude', requireAuth, async (req, res) => {
+  const prof = loadProfile(req.userId);
+  if (!prof.keys.anthropic) return res.status(400).json({ error: 'Add your Anthropic API key first — the model list comes from your account.' });
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/models?limit=100', {
+      headers: { 'x-api-key': prof.keys.anthropic, 'anthropic-version': '2023-06-01' }
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d?.error?.message || `HTTP ${r.status}`);
+    const models = (d.data || []).map(m => ({ id: m.id, name: m.display_name || m.id }));
+    if (!models.length) throw new Error('No models returned.');
+    res.json({ models });
+  } catch (err) {
+    res.status(502).json({ error: 'Could not load models from Anthropic: ' + String(err.message || err).slice(0, 150) });
+  }
+});
+
+// ---- kie live credits
+const kieCreditCache = {}; // userId -> { at, payload }
+app.get('/api/kie/credits', requireAuth, async (req, res) => {
+  const prof = loadProfile(req.userId);
+  const kkey = prof.keys.kie || prof.keys.kieImage || prof.keys.kieVideo;
+  if (!kkey) return res.json({ connected: false });
+  const c = kieCreditCache[req.userId];
+  if (c && Date.now() - c.at < 15000) return res.json(c.payload);
+  let payload;
+  try {
+    const r = await fetch('https://api.kie.ai/api/v1/chat/credit', { headers: { 'Authorization': `Bearer ${kkey}` } });
+    const text = await r.text();
+    let d; try { d = JSON.parse(text); } catch { d = {}; }
+    if (!r.ok) throw new Error(d?.msg || `HTTP ${r.status}`);
+    // credits may arrive as data: <number> or data: { credits/balance/remaining }
+    const raw = d.data;
+    const credits = typeof raw === 'number' ? raw
+      : Number(raw?.credits ?? raw?.balance ?? raw?.remaining ?? raw?.credit ?? NaN);
+    if (!Number.isFinite(credits)) throw new Error('unexpected credit format');
+    if (!prof.kieBaseline || credits > prof.kieBaseline) { prof.kieBaseline = credits; saveProfile(req.userId, prof); }
+    payload = { connected: true, credits, usd: +(credits * 0.005).toFixed(2), baseline: prof.kieBaseline, refreshedAt: new Date().toISOString().slice(0, 19).replace('T', ' ') };
+  } catch (err) {
+    payload = { connected: true, credits: null, error: String(err.message || err).slice(0, 120) };
+  }
+  kieCreditCache[req.userId] = { at: Date.now(), payload };
+  res.json(payload);
+});
+
 // ---- state
 app.get('/api/state', requireAuth, (req, res) => {
   const prof = loadProfile(req.userId);
@@ -261,7 +314,7 @@ app.get('/api/state', requireAuth, (req, res) => {
     counts,
     jobs: mine.slice().reverse().slice(0, 400),
     settings: {
-      keys: { gemini: mask(prof.keys.gemini), xai: mask(prof.keys.xai), heygen: mask(prof.keys.heygen), eleven: mask(prof.keys.eleven), anthropic: mask(prof.keys.anthropic) },
+      keys: Object.fromEntries(Object.entries(prof.keys).map(([k, v]) => [k, mask(v)])),
       connected: Object.fromEntries(Object.entries(prof.keys).map(([k, v]) => [k, !!v])),
       models: prof.models,
       eleven: prof.eleven,
@@ -386,9 +439,9 @@ app.post('/api/chat', requireAuth, async (req, res) => {
     }
     chat.messages.push({ role: 'user', content: text });
 
-    const keys = loadProfile(req.userId).keys;
+    const prof2 = loadProfile(req.userId);
     const history = chat.messages.slice(-30).map(m => ({ role: m.role, content: m.content }));
-    const reply = await E.runChat({ keys, system: buildChatSystem(preset), messages: history });
+    const reply = await E.runChat({ keys: prof2.keys, system: buildChatSystem(preset), messages: history, model: prof2.models.director });
 
     chat.messages.push({ role: 'assistant', content: reply });
     chat.updatedAt = Date.now();
@@ -459,6 +512,16 @@ app.post('/api/batches', requireAuth, (req, res) => {
   if (list.length > 500) return res.status(400).json({ error: 'Max 500 items per batch.' });
 
   const prof = loadProfile(req.userId);
+  let refImage = null;
+  if (options.presetId && ['kieimage', 'nano', 'gptimage'].includes(engine)) {
+    for (const ext of ['png', 'jpg', 'jpeg', 'webp']) {
+      const pth = path.join(REFS_DIR, req.userId, `${options.presetId}.${ext}`);
+      if (fs.existsSync(pth)) { refImage = path.posix.join(req.userId, `${options.presetId}.${ext}`); break; }
+    }
+  }
+  if (engine === 'heygen' && (!options.avatarId || !options.voiceId)) {
+    return res.status(400).json({ error: 'Pick a HeyGen avatar and voice first — they are remembered after the first time.' });
+  }
   const stamp = new Date().toISOString().slice(5, 16).replace(/[:T]/g, '-');
   const batchSlug = (options.batchName ? slug(options.batchName, 30) : '') || `${engine}-${stamp}`;
   const variations = Math.min(Math.max(1, Number(options.variations) || 1), 8);
@@ -469,10 +532,11 @@ app.post('/api/batches', requireAuth, (req, res) => {
     for (let v = 1; v <= variations; v++) {
       jobs.push({
         id: id(), userId: req.userId, batchId, batchSlug, index, variant: v, engine, prompt,
-        model: options.model || prof.models[engine] || undefined,
+        model: options.model || prof.models[engine === 'kieimage' ? 'kieImage' : engine === 'kievideo' ? 'kieVideo' : engine] || undefined,
+        refImage: refImage || undefined,
         aspectRatio: engine === 'eleven' ? undefined : (options.aspectRatio || '9:16'),
-        resolution: (engine === 'veo' || engine === 'grok') ? (options.resolution || '720p') : undefined,
-        duration: engine === 'grok' ? (options.duration || 6) : undefined,
+        resolution: (engine === 'veo' || engine === 'grok' || engine === 'kievideo') ? (options.resolution || '720p') : undefined,
+        duration: (engine === 'grok' || engine === 'kievideo') ? (options.duration || 6) : undefined,
         avatarId: engine === 'heygen' ? options.avatarId : undefined,
         voiceId: (engine === 'heygen' || engine === 'eleven') ? options.voiceId : undefined,
         voiceSettings: engine === 'eleven' ? prof.eleven : undefined,
@@ -516,7 +580,7 @@ function parseClips(raw) {
 }
 
 function createShotBatch(req, res, prompts, options) {
-  const videoEngine = (options.videoEngine === 'veo') ? 'veo' : 'grok';
+  const videoEngine = ['veo','grok','kievideo'].includes(options.videoEngine) ? options.videoEngine : 'grok';
   const clips = parseClips(prompts);
   if (!clips.length) return res.status(400).json({ error: 'No labeled clips found — need IMAGE: plus VIDEO: or HEYGEN: per clip.' });
   if (clips.length > 100) return res.status(400).json({ error: 'Max 100 clips per batch.' });
@@ -535,13 +599,13 @@ function createShotBatch(req, res, prompts, options) {
   const batchSlug = (options.batchName ? slug(options.batchName, 30) : '') || `clips-${stamp}`;
   const batchId = id();
   let nVid = 0, nHg = 0;
-  const imgEngine = options.imageEngine === 'nano' ? 'nano' : 'gptimage';
+  const imgEngine = ['nano','gptimage','kieimage'].includes(options.imageEngine) ? options.imageEngine : 'gptimage';
   clips.forEach((c, i) => {
     const isHg = !c.vid && c.hg;
     if (isHg) nHg++; else nVid++;
     jobs.push({
       id: id(), userId: req.userId, batchId, batchSlug, index: i + 1, variant: 1,
-      engine: imgEngine, prompt: c.img, model: prof.models[imgEngine],
+      engine: imgEngine, prompt: c.img, model: prof.models[imgEngine === 'kieimage' ? 'kieImage' : imgEngine],
       aspectRatio: options.aspectRatio || '9:16',
       refImage,
       clipTitle: c.title || undefined,

@@ -102,7 +102,8 @@
   .job .edge{background:
       radial-gradient(circle at 50% 50%, var(--bg) 2.2px, transparent 2.6px) 50% 0/22px 14px repeat-y,
       var(--hue)}
-  .j-nano,.j-gptimage{--hue:var(--nano)} .j-veo{--hue:var(--veo)} .j-grok{--hue:var(--grok)} .j-heygen{--hue:var(--heygen)} .j-eleven{--hue:var(--eleven)}
+  .j-nano,.j-gptimage,.j-kieimage{--hue:var(--nano)}
+  .j-kievideo{--hue:var(--veo)} .j-veo{--hue:var(--veo)} .j-grok{--hue:var(--grok)} .j-heygen{--hue:var(--heygen)} .j-eleven{--hue:var(--eleven)}
   .job .body{padding:11px 14px;min-width:0}
   .meta{display:flex;gap:10px;align-items:center;font-family:var(--mono);font-size:10.5px;color:var(--dim);flex-wrap:wrap}
   .meta .eng{color:var(--hue);font-weight:600;letter-spacing:.08em;text-transform:uppercase}
@@ -178,6 +179,10 @@
   .kstat.yes{color:var(--ok)} .kstat.no{color:var(--dim)}
 
   /* login */
+  .kiecred{display:flex;flex-direction:column;gap:3px;margin-left:14px;font-family:var(--mono);font-size:10.5px;color:var(--dim);min-width:120px}
+  .kiecred b{color:var(--ink)}
+  .kbar{height:4px;background:var(--line2);border-radius:2px;overflow:hidden}
+  .kbar i{display:block;height:100%;width:0%;background:var(--nano);border-radius:2px;transition:width .6s ease, background .6s ease}
   #login{position:fixed;inset:0;background:var(--bg);z-index:50;display:flex;align-items:center;justify-content:center;padding:20px}
   .login-card{width:min(400px,94vw);background:var(--panel);border:1px solid var(--line2);border-radius:12px;padding:28px;display:flex;flex-direction:column;gap:16px}
   .login-card h1{font-weight:900;font-stretch:112%;font-size:26px}
@@ -186,6 +191,10 @@
   .swap{background:none;border:none;color:var(--mut);font-size:12.5px;text-decoration:underline;text-underline-offset:3px}
   .swap:hover{color:var(--ink)}
 
+  .kiecred{display:flex;flex-direction:column;gap:3px;margin-left:14px;font-family:var(--mono);font-size:10.5px;color:var(--dim);min-width:120px}
+  .kiecred b{color:var(--ink)}
+  .kbar{height:4px;background:var(--line2);border-radius:2px;overflow:hidden}
+  .kbar i{display:block;height:100%;width:0%;background:var(--nano);border-radius:2px;transition:width .6s ease, background .6s ease}
   #login{position:fixed;inset:0;background:var(--bg);z-index:50;display:flex;align-items:center;justify-content:center;padding:20px}
   .login-card{width:min(400px,94vw);background:var(--panel);border:1px solid var(--line2);border-radius:12px;padding:28px;display:flex;flex-direction:column;gap:16px}
   .login-card h1{font-weight:900;font-stretch:112%;font-size:26px}
@@ -227,16 +236,20 @@
     <div class="c-done"><b id="cDone">0</b><span>Done</span></div>
     <div class="c-fail"><b id="cFailed">0</b><span>Failed</span></div>
   </div>
+  <div class="kiecred hide" id="kieCred" title="Kie.ai balance — updates live">
+    <span id="kieCredTxt">kie —</span>
+    <div class="kbar"><i id="kieCredBar"></i></div>
+  </div>
   <div class="hdr-actions">
+    <span class="who" id="who"></span>
     <button class="ghost" id="btnSettings">Settings</button>
-    </div>
+    <button class="mini" id="btnLogout">Sign out</button>
+  </div>
 </header>
 
 <nav id="nav">
   <button data-tab="dir" class="t-dir on"><span class="dot"></span>Director</button>
-  <button data-tab="nano" class="t-nano"><span class="dot"></span>Images</button>
-  <button data-tab="veo" class="t-veo"><span class="dot"></span>Veo</button>
-  <button data-tab="grok" class="t-grok"><span class="dot"></span>Grok</button>
+  <button data-tab="kie" class="t-nano"><span class="dot"></span>Kie AI</button>
   <button data-tab="heygen" class="t-heygen"><span class="dot"></span>HeyGen</button>
   <button data-tab="eleven" class="t-eleven"><span class="dot"></span>Voice</button>
   <button data-tab="rail" class="railtab">The Rail <b id="railCount"></b></button>
@@ -275,68 +288,45 @@
     </div>
   </section>
 
-  <!-- ========== NANO ========== -->
-  <section class="tab-panel hide" id="tab-nano">
+  <!-- ========== KIE AI STATION ========== -->
+  <section class="tab-panel hide" id="tab-kie">
     <div class="tool">
       <div>
-        <div class="tool-head t-nano"><h2>Images — Nano Banana Pro</h2><p>gemini api · one prompt per line</p></div>
+        <div class="tool-head t-nano"><h2>Kie AI</h2><p>one wallet, every model — pick a tool and the controls adapt</p></div>
         <div class="card stack">
-          <div class="prompt-head"><label for="p-nano">Prompts</label><span data-count="p-nano">0 items</span></div>
-          <textarea id="p-nano" rows="10" placeholder="One image prompt per line."></textarea>
+          <div>
+            <label>Tool</label>
+            <div class="engines" id="kieTools" style="grid-template-columns:1fr 1fr 1fr"></div>
+          </div>
           <div class="row3">
-            <div><label>Engine</label><select id="o-img-engine"><option value="gptimage">ChatGPT</option><option value="nano">Nano Banana Pro</option></select></div>
-            <div><label>Aspect</label><select id="o-nano-aspect"><option value="9:16">9:16</option><option value="16:9">16:9</option><option value="1:1">1:1</option></select></div>
-            <div><label>Takes per prompt</label><select id="o-nano-var"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
-            <div><label>Batch name</label><input id="o-nano-batch" placeholder="optional"></div>
+            <div><label>Model ID <small>— editable, from kie.ai/market</small></label><input id="kie-model"></div>
+            <div><label>Aspect</label><select id="kie-aspect"><option value="9:16">9:16</option><option value="16:9">16:9</option><option value="1:1">1:1</option></select></div>
+            <div id="kie-dur-wrap"><label>Duration (s)</label><input id="kie-duration" type="number" value="6" min="1" max="15"></div>
           </div>
-          <button class="fire" style="background:var(--nano)" data-fire="nano">Send to rail</button>
-          <div class="flash" id="f-nano"></div>
+          <div class="row" id="kie-img-extras">
+            <div><label>Character reference <small>— attaches the master image</small></label><select id="kie-preset"><option value="">— none —</option></select></div>
+            <div><label>Takes per prompt</label><select id="kie-var"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
+          </div>
+          <div class="prompt-head"><label for="p-kie">Prompts — one per line, or split with ---</label><span data-count="p-kie">0 items</span></div>
+          <textarea id="p-kie" rows="10" placeholder="Paste prompts here — or write them in the Director and send them over."></textarea>
+          <div><label>Batch name</label><input id="kie-batch" placeholder="optional"></div>
+          <button class="fire" style="background:var(--nano)" id="kieFire">Send to rail</button>
+          <div class="flash" id="f-kie"></div>
         </div>
       </div>
-      <div><div class="card"><p class="note">Files land in <b>outputs/&lt;you&gt;/&lt;batch&gt;/</b> numbered in prompt order. If a model rejects the aspect setting, the server retries without it automatically.</p></div></div>
-    </div>
-  </section>
-
-  <!-- ========== VEO ========== -->
-  <section class="tab-panel hide" id="tab-veo">
-    <div class="tool">
-      <div>
-        <div class="tool-head t-veo"><h2>Veo 3.1</h2><p>gemini api · 8s clips with native audio · one prompt per line</p></div>
-        <div class="card stack">
-          <div class="prompt-head"><label for="p-veo">Prompts</label><span data-count="p-veo">0 items</span></div>
-          <textarea id="p-veo" rows="10" placeholder="One video prompt per line."></textarea>
-          <div class="row3">
-            <div><label>Aspect</label><select id="o-veo-aspect"><option value="9:16">9:16</option><option value="16:9">16:9</option></select></div>
-            <div><label>Resolution</label><select id="o-veo-res"><option>720p</option><option>1080p</option></select></div>
-            <div><label>Batch name</label><input id="o-veo-batch" placeholder="optional"></div>
-          </div>
-          <button class="fire" style="background:var(--veo)" data-fire="veo">Send to rail</button>
-          <div class="flash" id="f-veo"></div>
+      <div><div class="card" id="kieBalCard" style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <label style="margin:0">Balance information</label>
+          <button class="mini" id="kieBalRefresh">↻ refresh</button>
         </div>
-      </div>
-      <div><div class="card"><p class="note">Veo renders take 1–6 minutes each; the rail polls automatically. <b>Each clip bills real money — test 2–3 prompts before firing a full list.</b> Swap to veo-3.1-fast in Settings for cheaper drafts.</p></div></div>
-    </div>
-  </section>
-
-  <!-- ========== GROK ========== -->
-  <section class="tab-panel hide" id="tab-grok">
-    <div class="tool">
-      <div>
-        <div class="tool-head t-grok"><h2>Grok Imagine</h2><p>xai api · video with audio · one prompt per line</p></div>
-        <div class="card stack">
-          <div class="prompt-head"><label for="p-grok">Prompts</label><span data-count="p-grok">0 items</span></div>
-          <textarea id="p-grok" rows="10" placeholder="One video prompt per line."></textarea>
-          <div class="row">
-            <div><label>Aspect</label><select id="o-grok-aspect"><option value="9:16">9:16</option><option value="16:9">16:9</option><option value="1:1">1:1</option></select></div>
-            <div><label>Duration (s)</label><input id="o-grok-dur" type="number" value="6" min="1" max="15"></div>
-            <div><label>Resolution</label><select id="o-grok-res"><option>720p</option><option>1080p</option></select></div>
-            <div><label>Batch name</label><input id="o-grok-batch" placeholder="optional"></div>
-          </div>
-          <button class="fire" style="background:var(--grok)" data-fire="grok">Send to rail</button>
-          <div class="flash" id="f-grok"></div>
+        <div style="display:flex;align-items:baseline;gap:8px;margin-top:10px">
+          <span id="kieBalNum" style="font-size:34px;font-weight:900;font-stretch:110%;letter-spacing:-.5px">—</span>
+          <span style="color:var(--dim);font-size:13px">credits</span>
         </div>
+        <div class="kbar" style="margin-top:10px"><i id="kieBalBar"></i></div>
+        <p class="note" id="kieBalMeta" style="margin-top:8px">connect a Kie key to see your live balance</p>
       </div>
-      <div><div class="card"><p class="note">Grok returns temporary URLs — the server downloads every clip immediately so nothing expires on you.</p></div></div>
+      <div class="card"><p class="note" id="kieNote"></p></div></div>
     </div>
   </section>
 
@@ -410,16 +400,22 @@ Or separate longer scripts with a line containing just ---"></textarea>
   <div class="dlg-head"><h3>Settings — your connections</h3><button class="mini" data-close="dlgSettings">Close</button></div>
   <div class="dlg-body">
     <div class="sec">API keys — each service bills your own account</div>
-    <div class="keyrow"><span class="kname">Gemini</span><input id="k-gemini" type="password" placeholder="AIza… (Nano Banana Pro + Veo, paid tier)"><span class="kstat" id="ks-gemini">not connected</span></div>
+    <div class="keyrow"><span class="kname" style="color:var(--nano)">Kie.ai ★</span><input id="k-kie" type="password" placeholder="one key → images + video, cheapest (kie.ai)"><span class="kstat" id="ks-kie">not connected</span></div>
+    <div class="keyrow"><span class="kname" style="color:var(--dim);font-size:11px">↳ images key</span><input id="k-kieImage" type="password" placeholder="optional — separate Kie key just for image jobs"><span class="kstat" id="ks-kieImage">not connected</span></div>
+    <div class="keyrow"><span class="kname" style="color:var(--dim);font-size:11px">↳ video key</span><input id="k-kieVideo" type="password" placeholder="optional — separate Kie key just for video jobs"><span class="kstat" id="ks-kieVideo">not connected</span></div>
+    <div class="keyrow"><span class="kname">Gemini</span><input id="k-gemini" type="password" placeholder="AIza… (direct Nano Banana + Veo, paid tier)"><span class="kstat" id="ks-gemini">not connected</span></div>
     <div class="keyrow"><span class="kname">xAI</span><input id="k-xai" type="password" placeholder="xai-… (Grok Imagine)"><span class="kstat" id="ks-xai">not connected</span></div>
     <div class="keyrow"><span class="kname">HeyGen</span><input id="k-heygen" type="password" placeholder="HeyGen API key"><span class="kstat" id="ks-heygen">not connected</span></div>
     <div class="keyrow"><span class="kname">ElevenLabs</span><input id="k-eleven" type="password" placeholder="xi-api-key"><span class="kstat" id="ks-eleven">not connected</span></div>
     <div class="keyrow"><span class="kname">OpenAI</span><input id="k-openai" type="password" placeholder="sk-… (ChatGPT image gen)"><span class="kstat" id="ks-openai">not connected</span></div>
-    <div class="keyrow"><span class="kname">Anthropic</span><input id="k-anthropic" type="password" placeholder="sk-ant-… (powers the Director)"><span class="kstat" id="ks-anthropic">not connected</span></div>
-    <p class="note">Keys are encrypted at rest and only used server-side to call each provider directly.</p>
+    <div class="keyrow"><span class="kname">Anthropic</span><input id="k-anthropic" type="password" placeholder="sk-ant-… (optional — Director falls back to your Kie key)"><span class="kstat" id="ks-anthropic">not connected</span></div>
+    <p class="note"><b>Simplest + cheapest:</b> one Kie.ai key runs EVERY Kie tool (the model ID picks the tool, not the key) — the optional per-tool keys below it are only for splitting rate limits or tracking spend separately at 30–80% below direct API rates (5,000 free credits on signup). The individual keys below are optional alternatives if you'd rather call a provider directly. HeyGen + ElevenLabs still run on their own keys off your subscriptions.</p>
     <div class="sec">Models</div>
     <div class="row"><div><label>Nano Banana model</label><input id="m-nano"></div><div><label>ChatGPT image model</label><input id="m-gptimage"></div></div>
-    <div class="row"><div><label>Veo model</label><input id="m-veo"></div><div><label></label></div></div>
+    <div class="row"><div><label>Kie image model</label><input id="m-kieimage"></div><div><label>Kie video model</label><input id="m-kievideo"></div></div>
+    <div class="row"><div><label>Veo model</label><input id="m-veo"></div><div><label>Director model (Claude) <small>— from YOUR Anthropic account</small></label>
+      <div style="display:flex;gap:6px"><input id="m-director" list="claudeModelList" style="flex:1"><button class="mini" id="claudeModelsLoad" type="button" title="Pull the model list from your Anthropic account">↻ my models</button></div>
+      <datalist id="claudeModelList"></datalist></div></div>
     <div class="row"><div><label>Grok model</label><input id="m-grok"></div><div><label>ElevenLabs model</label><input id="m-eleven"></div></div>
     <div class="sec">ElevenLabs voice settings</div>
     <div class="row3">
@@ -494,24 +490,74 @@ document.querySelectorAll('textarea[id^="p-"]').forEach(t => {
   });
 });
 
-// ---------------- fire batches ----------------
+// ---------------- kie station ----------------
+const KIE_TOOLS = {
+  nb:      { name:'Nano Banana',     type:'image', model:'google/nano-banana', note:'Fast character stills — about two cents an image. Reference image supported.' },
+  nbpro:   { name:'Nano Banana Pro', type:'image', model:'nano-banana-pro',    note:'2K/4K studio-grade stills (~$0.12). Best for master shots and product close-ups.' },
+  gptimg:  { name:'GPT Image',       type:'image', model:'gpt-image-2',        note:'OpenAI image look via Kie — alternate style for A/B tests. Verify the model ID at kie.ai/market → GPT Image if it errors.' },
+  veofast: { name:'Veo Fast',        type:'video', model:'veo3_fast',          note:'8s clips with native audio (~$0.40). The workhorse for volume batches. 1080p only on 16:9.' },
+  veoq:    { name:'Veo Quality',     type:'video', model:'veo3',               note:'Cinematic quality (~$2.00). Save it for hero clips and hooks that earn it.' },
+  grokimg: { name:'Grok Imagine',    type:'video', model:'grok-imagine/image-to-video', note:'Image-to-video — the classic Marlon pipeline engine. If it errors, copy the exact model ID from kie.ai/market → Grok Imagine.' }
+};
+let kieTool = 'nb';
+function renderKieTools() {
+  $('#kieTools').innerHTML = Object.entries(KIE_TOOLS).map(([id,t]) =>
+    `<button class="engine ${t.type==='image'?'e-nano':'e-veo'} ${id===kieTool?'sel':''}" data-kietool="${id}">
+      <b>${t.name}</b><span>${t.type}</span><small>${t.type==='image'?'stills':'motion'}</small></button>`).join('');
+}
+function selectKieTool(id) {
+  kieTool = id;
+  const t = KIE_TOOLS[id];
+  renderKieTools();
+  $('#kie-model').value = t.model;
+  $('#kie-dur-wrap').classList.toggle('hide', t.type !== 'video');
+  $('#kie-img-extras').classList.toggle('hide', t.type !== 'image');
+  $('#kieNote').textContent = t.note + ' Files land in outputs/<batch>/ numbered in prompt order.';
+  $('#kieFire').style.background = getComputedStyle(document.documentElement).getPropertyValue(t.type==='image'?'--nano':'--veo');
+}
+$('#kieTools').addEventListener('click', e => {
+  const b = e.target.closest('[data-kietool]'); if (b) selectKieTool(b.dataset.kietool);
+});
+renderKieTools(); selectKieTool('nb');
+
+$('#kieFire').addEventListener('click', async () => {
+  const t = KIE_TOOLS[kieTool];
+  const raw = $('#p-kie').value;
+  if (!splitItems(raw).length) return flash('#f-kie', 'Paste at least one prompt.', false);
+  $('#kieFire').disabled = true;
+  try {
+    const r = await api('/api/batches', 'POST', {
+      engine: t.type === 'image' ? 'kieimage' : 'kievideo',
+      prompts: raw,
+      options: {
+        model: $('#kie-model').value.trim() || t.model,
+        aspectRatio: $('#kie-aspect').value,
+        duration: t.type === 'video' ? +$('#kie-duration').value : undefined,
+        variations: t.type === 'image' ? +$('#kie-var').value : 1,
+        presetId: t.type === 'image' ? $('#kie-preset').value : undefined,
+        batchName: $('#kie-batch').value
+      }
+    });
+    flash('#f-kie', `${r.count} job${r.count>1?'s':''} on the rail → ${r.batchSlug}/`, true);
+    refresh(); setTimeout(loadKieCredits, 15000); setTimeout(loadKieCredits, 45000);
+  } catch (err) { flash('#f-kie', err.message, false); }
+  $('#kieFire').disabled = false;
+});
+
+// heygen + eleven tab fire buttons
 document.querySelectorAll('button[data-fire]').forEach(btn => btn.addEventListener('click', async () => {
-  let eng = btn.dataset.fire;
+  const eng = btn.dataset.fire;
   const raw = $('#p-' + eng).value;
-  if (eng === 'nano') eng = $('#o-img-engine').value; // Images tab fires the chosen image engine
   if (!splitItems(raw).length) return flash('#f-'+eng, 'Paste at least one item.', false);
   const options = { };
-  if (eng === 'nano' || eng === 'gptimage') Object.assign(options, { aspectRatio: $('#o-nano-aspect').value, variations: +$('#o-nano-var').value, batchName: $('#o-nano-batch').value });
-  if (eng === 'veo') Object.assign(options, { aspectRatio: $('#o-veo-aspect').value, resolution: $('#o-veo-res').value, batchName: $('#o-veo-batch').value });
-  if (eng === 'grok') Object.assign(options, { aspectRatio: $('#o-grok-aspect').value, duration: +$('#o-grok-dur').value, resolution: $('#o-grok-res').value, batchName: $('#o-grok-batch').value });
   if (eng === 'heygen') {
     options.avatarId = $('#o-hg-avatar').value; options.voiceId = $('#o-hg-voice').value;
     options.aspectRatio = $('#o-hg-aspect').value; options.batchName = $('#o-hg-batch').value;
-    if (!options.avatarId || !options.voiceId) return flash('#f-heygen', 'Pick an avatar and a voice first (Load button).', false);
+    if (!options.avatarId || !options.voiceId) return flash('#f-heygen', 'Pick an avatar and a voice first.', false);
   }
   if (eng === 'eleven') {
     options.voiceId = $('#o-el-voice').value; options.batchName = $('#o-el-batch').value;
-    if (!options.voiceId) return flash('#f-eleven', 'Pick a voice first (Load button).', false);
+    if (!options.voiceId) return flash('#f-eleven', 'Pick a voice first.', false);
   }
   btn.disabled = true;
   try {
@@ -556,7 +602,7 @@ $('#elLoad').addEventListener('click', async () => {
 
 // ---------------- director chat (persistent) ----------------
 let currentChatId = null, chatIndex = [];
-const TOOLNAMES = { nano:'Images · Nano Banana Pro', gptimage:'Images · ChatGPT', veo:'Veo', grok:'Grok', heygen:'HeyGen', eleven:'ElevenLabs' };
+const TOOLNAMES = { nano:'Images · Nano Banana Pro', gptimage:'Images · ChatGPT', kieimage:'Images · Kie', kievideo:'Video · Kie', veo:'Veo', grok:'Grok', heygen:'HeyGen', eleven:'ElevenLabs' };
 let blockRegistry = [];
 
 function parseClipsClient(raw) {
@@ -601,7 +647,7 @@ function renderAssistant(text) {
       const clips = parseClipsClient(p.raw);
       p.clips = clips;
       if (!clips.length) return `<div class="ctext">${esc(p.raw)}</div>`;
-      return `<div class="pcard t-nano"><div class="pcard-head"><b>Clips · image → video</b><span>${clips.length} clip${clips.length>1?'s':''}</span><select class="mini" data-imgsel="${idx}" title="Image engine" style="width:auto;padding:5px 8px"><option value="gptimage">ChatGPT imgs</option><option value="nano">Nano Banana imgs</option></select><button class="mini bgen" data-shotgen="${idx}" data-veng="grok">⚡ Run via Grok</button><button class="mini bgen" data-shotgen="${idx}" data-veng="veo">⚡ Run via Veo</button><button class="mini" data-blockcopy="${idx}">Copy</button></div><div class="pcard-items">${clips.map((c,i)=>{
+      return `<div class="pcard t-nano"><div class="pcard-head"><b>Clips · image → video</b><span>${clips.length} clip${clips.length>1?'s':''}</span><select class="mini" data-imgsel="${idx}" title="Image engine" style="width:auto;padding:5px 8px"><option value="kieimage">Kie · Nano Banana</option><option value="gptimage">ChatGPT imgs</option><option value="nano">Nano Banana direct</option></select><select class="mini" data-vidsel="${idx}" title="Video engine" style="width:auto;padding:5px 8px"><option value="kievideo">Kie · Veo</option><option value="grok">Grok direct</option><option value="veo">Veo direct</option></select><button class="mini bgen" data-shotgen="${idx}" data-veng="sel">⚡ Generate clips</button><button class="mini" data-blockcopy="${idx}">Copy</button></div><div class="pcard-items">${clips.map((c,i)=>{
         const say = (c.vid.match(/He says:\s*"([^"]+)"/i)||[])[1] || (c.hg ? c.hg.split('\\n')[0] : '');
         return `<div><i>${String(i+1).padStart(2,'0')}</i><b style="font-weight:700">${esc(c.title||'Clip '+(i+1))}</b>${c.hg?' <b style=\"color:var(--heygen);font-weight:600\">HEYGEN</b>':''}${say?`<br><span style=\"color:var(--nano)\">🗣 ${esc(say)}</span>`:''}<br><span style=\"color:var(--dim)\">IMG</span> ${esc(c.img.slice(0,110))}…</div>`;
       }).join('')}</div></div>`;
@@ -700,15 +746,22 @@ $('#chatList').addEventListener('click', async e => {
 });
 function blockOptions(tool) {
   const picks = state?.settings?.picks || {};
-  if (tool === 'nano') return { aspectRatio: $('#o-nano-aspect').value, variations: +$('#o-nano-var').value };
-  if (tool === 'veo') return { aspectRatio: $('#o-veo-aspect').value, resolution: $('#o-veo-res').value };
-  if (tool === 'grok') return { aspectRatio: $('#o-grok-aspect').value, duration: +$('#o-grok-dur').value, resolution: $('#o-grok-res').value };
-  if (tool === 'heygen') return { aspectRatio: $('#o-hg-aspect').value, avatarId: $('#o-hg-avatar').value || picks.heygenAvatar, voiceId: $('#o-hg-voice').value || picks.heygenVoice };
-  if (tool === 'eleven') return { voiceId: $('#o-el-voice').value || picks.elevenVoice };
-  return {};
+  const KMAP = { nano:['kieimage','google/nano-banana'], gptimage:['kieimage','gpt-4o-image'], kieimage:['kieimage','google/nano-banana'],
+                 veo:['kievideo','veo3-fast'], grok:['kievideo','grok-imagine'], kievideo:['kievideo','veo3-fast'] };
+  if (KMAP[tool]) {
+    const [engine, model] = KMAP[tool];
+    return { engine, model,
+      aspectRatio: $('#kie-aspect').value,
+      duration: engine === 'kievideo' ? +$('#kie-duration').value : undefined,
+      presetId: engine === 'kieimage' ? $('#dPreset').value : undefined };
+  }
+  if (tool === 'heygen') return { engine:'heygen', aspectRatio: $('#o-hg-aspect').value, avatarId: $('#o-hg-avatar').value || picks.heygenAvatar, voiceId: $('#o-hg-voice').value || picks.heygenVoice };
+  if (tool === 'eleven') return { engine:'eleven', voiceId: $('#o-el-voice').value || picks.elevenVoice };
+  return { engine: tool };
 }
 async function fireBlock(b, btn) {
   const options = blockOptions(b.tool);
+  const engine = options.engine || b.tool; delete options.engine;
   if (b.tool === 'heygen' && (!options.avatarId || !options.voiceId))
     return flash('#dFlash', 'Pick an avatar and voice on the HeyGen tab once — they are remembered after that.', false);
   if (b.tool === 'eleven' && !options.voiceId)
@@ -716,7 +769,7 @@ async function fireBlock(b, btn) {
   if (btn) { btn.disabled = true; btn.textContent = 'Queuing…'; }
   try {
     const sep = (b.tool==='heygen'||b.tool==='eleven') ? '\n---\n' : '\n';
-    const r = await api('/api/batches', 'POST', { engine: b.tool, prompts: b.items.join(sep), options });
+    const r = await api('/api/batches', 'POST', { engine, prompts: b.items.join(sep), options });
     if (btn) btn.textContent = `✓ ${r.count} on the rail`;
     flash('#dFlash', `${r.count} ${TOOLNAMES[b.tool]} job${r.count>1?'s':''} queued → The Rail`, true);
     refresh();
@@ -729,19 +782,20 @@ $('#chatLog').addEventListener('click', e => {
   const sgen = e.target.closest('[data-shotgen]');
   if (sgen) {
     const b = blockRegistry[+sgen.dataset.shotgen]; if (!b) return;
-    const veng = sgen.dataset.veng;
+    const vidSel = document.querySelector(`[data-vidsel="${sgen.dataset.shotgen}"]`);
+    const veng = sgen.dataset.veng === 'sel' ? (vidSel ? vidSel.value : 'kievideo') : sgen.dataset.veng;
     const options = {
       videoEngine: veng,
-      aspectRatio: $('#o-nano-aspect').value,
-      resolution: veng === 'veo' ? $('#o-veo-res').value : $('#o-grok-res').value,
-      duration: +$('#o-grok-dur').value
+      aspectRatio: $('#kie-aspect').value,
+      resolution: '720p',
+      duration: +$('#kie-duration').value
     };
     options.presetId = $('#dPreset').value;
     const imgSel = document.querySelector(`[data-imgsel="${sgen.dataset.shotgen}"]`);
     options.imageEngine = imgSel ? imgSel.value : 'gptimage';
     sgen.disabled = true; sgen.textContent = 'Queuing…';
     api('/api/batches','POST',{ engine:'shot', prompts: b.raw || b.items.join('\n---\n'), options })
-      .then(r => { sgen.textContent = `✓ ${r.count} clips rolling`; flash('#dFlash', `${r.count} clip${r.count>1?'s':''} queued (${r.video} video, ${r.heygen} HeyGen via ElevenLabs audio) — every step auto-feeds the next.`, true); refresh(); })
+      .then(r => { sgen.textContent = `✓ ${r.count} clips rolling`; flash('#dFlash', `${r.count} clip${r.count>1?'s':''} queued — every step auto-feeds the next.`, true); refresh(); setTimeout(loadKieCredits, 20000); setTimeout(loadKieCredits, 60000); })
       .catch(err => { sgen.disabled = false; sgen.textContent = '⚡ Run via ' + (veng==='grok'?'Grok':'Veo'); flash('#dFlash', err.message, false); });
     return;
   }
@@ -756,11 +810,15 @@ $('#chatLog').addEventListener('click', e => {
   }
   if (!send) return;
   const b = blockRegistry[+send.dataset.blocksend]; if (!b) return;
-  const t = b.tool, sep = (t==='heygen'||t==='eleven') ? '\n---\n' : '\n';
-  const ta = $('#p-'+t); if (!ta) return;
+  const t = b.tool;
+  const KIESEL = { nano:'nb', kieimage:'nb', gptimage:'gptimg', veo:'veofast', kievideo:'veofast', grok:'grokimg' };
+  const target = KIESEL[t] ? 'kie' : t;
+  const sep = (t==='heygen'||t==='eleven') ? '\n---\n' : '\n';
+  const ta = $('#p-'+target); if (!ta) return;
+  if (KIESEL[t]) selectKieTool(KIESEL[t]);
   ta.value = (ta.value.trim() ? ta.value.trim()+sep : '') + b.items.join(sep);
   ta.dispatchEvent(new Event('input'));
-  document.querySelector(`#nav button[data-tab="${t}"]`).click();
+  document.querySelector(`#nav button[data-tab="${target}"]`).click();
 });
 loadChatIndex();
 
@@ -805,7 +863,7 @@ function renderRail() {
     const remove = !running ? `<button class="jbtn" data-act="remove" data-id="${j.id}">✕</button>` : '';
     return `<div class="job j-${j.engine}"><div class="edge"></div>
       <div class="body">
-        <div class="meta"><span class="eng">${j.engine==='nano'?'nano banana':j.engine==='gptimage'?'chatgpt img':j.engine==='eleven'?'elevenlabs':j.engine}</span>
+        <div class="meta"><span class="eng">${j.engine==='nano'?'nano banana':j.engine==='gptimage'?'chatgpt img':j.engine==='kieimage'?'kie image':j.engine==='kievideo'?'kie video':j.engine==='eleven'?'elevenlabs':j.engine}</span>
         <span class="st ${j.status}">${j.status}</span>
         <span>#${String(j.index).padStart(3,'0')}${j.variant>1?'·v'+j.variant:''}</span>${j.chained?'<span style="color:var(--nano)">img→vid</span>':j.chain?'<span style="color:var(--veo)">shot 1/2</span>':''}
         <span>${esc(j.batchSlug)}</span>${secs?`<span>${secs}</span>`:''}</div>
@@ -819,13 +877,14 @@ function renderRail() {
 // ---------------- settings ----------------
 $('#btnSettings').addEventListener('click', () => {
   const s = state?.settings || {};
-  for (const k of ['gemini','xai','heygen','eleven','anthropic','openai']) {
+  for (const k of ['kie','kieImage','kieVideo','gemini','xai','heygen','eleven','anthropic','openai']) {
     $('#k-'+k).value = s.keys?.[k] || '';
     const st = $('#ks-'+k);
     st.textContent = s.connected?.[k] ? 'connected' : 'not connected';
     st.className = 'kstat ' + (s.connected?.[k] ? 'yes' : 'no');
   }
-  $('#m-nano').value = s.models?.nano||''; $('#m-gptimage').value = s.models?.gptimage||''; $('#m-veo').value = s.models?.veo||'';
+  $('#m-nano').value = s.models?.nano||''; $('#m-gptimage').value = s.models?.gptimage||''; $('#m-kieimage').value = s.models?.kieImage||''; $('#m-kievideo').value = s.models?.kieVideo||''; $('#m-director').value = s.models?.director||'';
+  if (!claudeModelsLoaded && s.connected?.anthropic) loadClaudeModels(false); $('#m-veo').value = s.models?.veo||'';
   $('#m-grok').value = s.models?.grok||''; $('#m-eleven').value = s.models?.eleven||'';
   $('#el-stab').value = Math.round((s.eleven?.stability??.55)*100);
   $('#el-sim').value = Math.round((s.eleven?.similarity??.75)*100);
@@ -916,6 +975,12 @@ async function refresh() {
   $('#cFailed').textContent = state.counts.failed;
   const active = state.counts.queued + state.counts.running;
   $('#railCount').textContent = active ? '· ' + active : '';
+  const ks = $('#kie-preset');
+  if (ks && ks.options.length !== state.presets.length + 1) {
+    const prev = ks.value;
+    ks.innerHTML = '<option value="">— none —</option>' + state.presets.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
+    if ([...ks.options].some(o=>o.value===prev)) ks.value = prev;
+  }
   const sel = $('#dPreset');
   if (sel.options.length !== state.presets.length || [...sel.options].some((o,i)=>o.value!==state.presets[i]?.id)) {
     const prev = sel.value;
@@ -943,13 +1008,56 @@ $('#loginForm').addEventListener('submit', async e => {
   } catch (err) { const f=$('#lFlash'); f.textContent = err.message; f.className='flash bad'; }
 });
 $('#btnLogout').addEventListener('click', async () => { await api('/api/logout','POST'); location.reload(); });
+async function loadKieCredits() {
+  try {
+    const d = await api('/api/kie/credits');
+    const box = $('#kieCred');
+    if (!d.connected) { box.classList.add('hide'); $('#kieBalNum').textContent = '—'; return; }
+    box.classList.remove('hide');
+    if (d.credits == null) {
+      $('#kieCredTxt').innerHTML = 'kie · balance unavailable';
+      $('#kieCredBar').style.width = '0%';
+      $('#kieBalNum').textContent = '—';
+      $('#kieBalMeta').textContent = 'balance unavailable — ' + (d.error || 'check the key');
+      return;
+    }
+    const exact = d.credits.toLocaleString();
+    $('#kieCredTxt').innerHTML = `kie <b>${exact}</b> cr · ~$${d.usd.toLocaleString()}`;
+    $('#kieBalNum').textContent = exact;
+    $('#kieBalMeta').textContent = `≈ $${d.usd.toLocaleString()} · current balance · refresh time: ${d.refreshedAt || 'now'}`;
+    const pct = d.baseline ? Math.max(2, Math.min(100, Math.round(d.credits / d.baseline * 100))) : 100;
+    for (const el of [$('#kieCredBar'), $('#kieBalBar')]) {
+      el.style.width = pct + '%';
+      el.style.background = pct > 40 ? 'var(--nano)' : pct > 15 ? '#F2C14E' : 'var(--bad)';
+    }
+  } catch { /* silent */ }
+}
+document.addEventListener('click', e => { if (e.target.id === 'kieBalRefresh') loadKieCredits(); });
+
+// pull the Claude model list from the user's own Anthropic account
+let claudeModelsLoaded = false;
+async function loadClaudeModels(manual) {
+  const btn = $('#claudeModelsLoad');
+  if (manual) btn.textContent = 'loading…';
+  try {
+    const d = await api('/api/catalog/claude');
+    $('#claudeModelList').innerHTML = d.models.map(m => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('');
+    claudeModelsLoaded = true;
+    if (manual) btn.textContent = `✓ ${d.models.length} models`;
+  } catch (err) {
+    if (manual) { btn.textContent = '↻ my models'; alert(err.message); }
+  }
+}
+document.addEventListener('click', e => { if (e.target.id === 'claudeModelsLoad') loadClaudeModels(true); });
 async function enterApp() {
   authed = true;
   $('#login').classList.add('hide');
   $('#app').classList.remove('hide');
   await refresh();
   loadChatIndex();
+  loadKieCredits();
   setInterval(refresh, 3000);
+  setInterval(loadKieCredits, 60000);
 }
 api('/api/state').then(() => enterApp()).catch(() => {});
 </script>
