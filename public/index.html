@@ -893,11 +893,31 @@ $('#btnSettings').addEventListener('click', () => {
   $('#dlgSettings').showModal();
 });
 $('#btnSaveSettings').addEventListener('click', async () => {
-  await api('/api/settings','POST',{
-    keys: { gemini:$('#k-gemini').value, xai:$('#k-xai').value, heygen:$('#k-heygen').value, eleven:$('#k-eleven').value, anthropic:$('#k-anthropic').value },
-    models: { nano:$('#m-nano').value, veo:$('#m-veo').value, grok:$('#m-grok').value, eleven:$('#m-eleven').value },
-    eleven: { stability:+$('#el-stab').value/100, similarity:+$('#el-sim').value/100, style:+$('#el-style').value/100, speakerBoost:$('#el-boost').checked }
-  });
+  const btn = $('#btnSaveSettings');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    await api('/api/settings', 'POST', {
+      keys: {
+        kie: $('#k-kie').value, kieImage: $('#k-kieImage').value, kieVideo: $('#k-kieVideo').value,
+        gemini: $('#k-gemini').value, xai: $('#k-xai').value, heygen: $('#k-heygen').value,
+        eleven: $('#k-eleven').value, anthropic: $('#k-anthropic').value, openai: $('#k-openai').value
+      },
+      models: {
+        nano: $('#m-nano').value, gptimage: $('#m-gptimage').value,
+        kieImage: $('#m-kieimage').value, kieVideo: $('#m-kievideo').value,
+        veo: $('#m-veo').value, grok: $('#m-grok').value, eleven: $('#m-eleven').value,
+        director: $('#m-director').value
+      },
+      eleven: { stability: +$('#el-stab').value/100, similarity: +$('#el-sim').value/100, style: +$('#el-style').value/100, speakerBoost: $('#el-boost').checked }
+    });
+    btn.textContent = '✓ Saved';
+    refresh(); loadKieCredits();
+    setTimeout(() => { $('#dlgSettings').close(); btn.textContent = 'Save settings'; btn.disabled = false; }, 700);
+  } catch (err) {
+    btn.textContent = 'Save settings'; btn.disabled = false;
+    alert('Save failed: ' + (err.message || err));
+  }
+});
   $('#dlgSettings').close();
   refresh();
 });
