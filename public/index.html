@@ -918,9 +918,6 @@ $('#btnSaveSettings').addEventListener('click', async () => {
     alert('Save failed: ' + (err.message || err));
   }
 });
-  $('#dlgSettings').close();
-  refresh();
-});
 document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => $('#'+b.dataset.close).close()));
 
 // ---------------- presets ----------------
