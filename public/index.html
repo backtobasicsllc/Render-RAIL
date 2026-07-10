@@ -414,8 +414,7 @@ Or separate longer scripts with a line containing just ---"></textarea>
     <div class="row"><div><label>Nano Banana model</label><input id="m-nano"></div><div><label>ChatGPT image model</label><input id="m-gptimage"></div></div>
     <div class="row"><div><label>Kie image model</label><input id="m-kieimage"></div><div><label>Kie video model</label><input id="m-kievideo"></div></div>
     <div class="row"><div><label>Veo model</label><input id="m-veo"></div><div><label>Director model (Claude) <small>— from YOUR Anthropic account</small></label>
-      <div style="display:flex;gap:6px"><input id="m-director" list="claudeModelList" style="flex:1"><button class="mini" id="claudeModelsLoad" type="button" title="Pull the model list from your Anthropic account">↻ my models</button></div>
-      <datalist id="claudeModelList"></datalist></div></div>
+      <div style="display:flex;gap:6px"><select id="m-director" style="flex:1"></select><button class="mini" id="claudeModelsLoad" type="button" title="Pull the model list from your Anthropic account">↻ my models</button></div></div></div>
     <div class="row"><div><label>Grok model</label><input id="m-grok"></div><div><label>ElevenLabs model</label><input id="m-eleven"></div></div>
     <div class="sec">ElevenLabs voice settings</div>
     <div class="row3">
@@ -883,7 +882,7 @@ $('#btnSettings').addEventListener('click', () => {
     st.textContent = s.connected?.[k] ? 'connected' : 'not connected';
     st.className = 'kstat ' + (s.connected?.[k] ? 'yes' : 'no');
   }
-  $('#m-nano').value = s.models?.nano||''; $('#m-gptimage').value = s.models?.gptimage||''; $('#m-kieimage').value = s.models?.kieImage||''; $('#m-kievideo').value = s.models?.kieVideo||''; $('#m-director').value = s.models?.director||'';
+  $('#m-nano').value = s.models?.nano||''; $('#m-gptimage').value = s.models?.gptimage||''; $('#m-kieimage').value = s.models?.kieImage||''; $('#m-kievideo').value = s.models?.kieVideo||''; setDirectorModel(s.models?.director || 'claude-sonnet-4-6');
   if (!claudeModelsLoaded && s.connected?.anthropic) loadClaudeModels(false); $('#m-veo').value = s.models?.veo||'';
   $('#m-grok').value = s.models?.grok||''; $('#m-eleven').value = s.models?.eleven||'';
   $('#el-stab').value = Math.round((s.eleven?.stability??.55)*100);
@@ -1053,12 +1052,22 @@ document.addEventListener('click', e => { if (e.target.id === 'kieBalRefresh') l
 
 // pull the Claude model list from the user's own Anthropic account
 let claudeModelsLoaded = false;
+function setDirectorModel(v) {
+  const sel = $('#m-director');
+  if (![...sel.options].some(o => o.value === v)) {
+    const o = document.createElement('option'); o.value = v; o.textContent = v; sel.appendChild(o);
+  }
+  sel.value = v;
+}
 async function loadClaudeModels(manual) {
   const btn = $('#claudeModelsLoad');
   if (manual) btn.textContent = 'loading…';
   try {
     const d = await api('/api/catalog/claude');
-    $('#claudeModelList').innerHTML = d.models.map(m => `<option value="${esc(m.id)}">${esc(m.name)}</option>`).join('');
+    const sel = $('#m-director');
+    const cur = sel.value || 'claude-sonnet-4-6';
+    sel.innerHTML = d.models.map(m => `<option value="${esc(m.id)}">${esc(m.name)} — ${esc(m.id)}</option>`).join('');
+    setDirectorModel(cur);
     claudeModelsLoaded = true;
     if (manual) btn.textContent = `✓ ${d.models.length} models`;
   } catch (err) {
