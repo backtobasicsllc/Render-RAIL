@@ -496,7 +496,8 @@ const KIE_TOOLS = {
   gptimg:  { name:'GPT Image',       type:'image', model:'gpt-image-2',        note:'OpenAI image look via Kie — alternate style for A/B tests. Verify the model ID at kie.ai/market → GPT Image if it errors.' },
   veofast: { name:'Veo Fast',        type:'video', model:'veo3_fast',          note:'8s clips with native audio (~$0.40). The workhorse for volume batches. 1080p only on 16:9.' },
   veoq:    { name:'Veo Quality',     type:'video', model:'veo3',               note:'Cinematic quality (~$2.00). Save it for hero clips and hooks that earn it.' },
-  grokimg: { name:'Grok Imagine',    type:'video', model:'grok-imagine/image-to-video', note:'Image-to-video — the classic Marlon pipeline engine. If it errors, copy the exact model ID from kie.ai/market → Grok Imagine.' }
+  grokdir: { name:'Grok · your xAI key', type:'video', engine:'grok', model:'grok-imagine-video', note:'Direct xAI — your original Marlon pipeline, billed to your own xAI account, no middleman.' },
+  grokimg: { name:'Grok via Kie',    type:'video', model:'grok-imagine/image-to-video', note:'Same Grok Imagine through the Kie wallet. If it errors, copy the exact model ID from kie.ai/market → Grok Imagine.' }
 };
 let kieTool = 'nb';
 function renderKieTools() {
@@ -526,7 +527,7 @@ $('#kieFire').addEventListener('click', async () => {
   $('#kieFire').disabled = true;
   try {
     const r = await api('/api/batches', 'POST', {
-      engine: t.type === 'image' ? 'kieimage' : 'kievideo',
+      engine: t.engine || (t.type === 'image' ? 'kieimage' : 'kievideo'),
       prompts: raw,
       options: {
         model: $('#kie-model').value.trim() || t.model,
@@ -646,7 +647,7 @@ function renderAssistant(text) {
       const clips = parseClipsClient(p.raw);
       p.clips = clips;
       if (!clips.length) return `<div class="ctext">${esc(p.raw)}</div>`;
-      return `<div class="pcard t-nano"><div class="pcard-head"><b>Clips · image → video</b><span>${clips.length} clip${clips.length>1?'s':''}</span><select class="mini" data-imgsel="${idx}" title="Image engine" style="width:auto;padding:5px 8px"><option value="kieimage">Kie · Nano Banana</option><option value="gptimage">ChatGPT imgs</option><option value="nano">Nano Banana direct</option></select><select class="mini" data-vidsel="${idx}" title="Video engine" style="width:auto;padding:5px 8px"><option value="kievideo">Kie · Veo</option><option value="grok">Grok direct</option><option value="veo">Veo direct</option></select><button class="mini bgen" data-shotgen="${idx}" data-veng="sel">⚡ Generate clips</button><button class="mini" data-blockcopy="${idx}">Copy</button></div><div class="pcard-items">${clips.map((c,i)=>{
+      return `<div class="pcard t-nano"><div class="pcard-head"><b>Clips · image → video</b><span>${clips.length} clip${clips.length>1?'s':''}</span><select class="mini" data-imgsel="${idx}" title="Image engine" style="width:auto;padding:5px 8px"><option value="kieimage">Kie · Nano Banana</option><option value="gptimage">ChatGPT imgs</option><option value="nano">Nano Banana direct</option></select><select class="mini" data-vidsel="${idx}" title="Video engine" style="width:auto;padding:5px 8px"><option value="grok">Grok · your xAI key</option><option value="kievideo">Kie · Veo</option><option value="veo">Veo · your Gemini key</option></select><button class="mini bgen" data-shotgen="${idx}" data-veng="sel">⚡ Generate clips</button><button class="mini" data-blockcopy="${idx}">Copy</button></div><div class="pcard-items">${clips.map((c,i)=>{
         const say = (c.vid.match(/He says:\s*"([^"]+)"/i)||[])[1] || (c.hg ? c.hg.split('\\n')[0] : '');
         return `<div><i>${String(i+1).padStart(2,'0')}</i><b style="font-weight:700">${esc(c.title||'Clip '+(i+1))}</b>${c.hg?' <b style=\"color:var(--heygen);font-weight:600\">HEYGEN</b>':''}${say?`<br><span style=\"color:var(--nano)\">🗣 ${esc(say)}</span>`:''}<br><span style=\"color:var(--dim)\">IMG</span> ${esc(c.img.slice(0,110))}…</div>`;
       }).join('')}</div></div>`;
@@ -746,10 +747,10 @@ $('#chatList').addEventListener('click', async e => {
 function blockOptions(tool) {
   const picks = state?.settings?.picks || {};
   const KMAP = { nano:['kieimage','google/nano-banana'], gptimage:['kieimage','gpt-4o-image'], kieimage:['kieimage','google/nano-banana'],
-                 veo:['kievideo','veo3-fast'], grok:['kievideo','grok-imagine'], kievideo:['kievideo','veo3-fast'] };
+                 veo:['kievideo','veo3-fast'], grok:['grok', null], kievideo:['kievideo','veo3-fast'] };
   if (KMAP[tool]) {
     const [engine, model] = KMAP[tool];
-    return { engine, model,
+    return { engine, ...(model ? { model } : {}),
       aspectRatio: $('#kie-aspect').value,
       duration: engine === 'kievideo' ? +$('#kie-duration').value : undefined,
       presetId: engine === 'kieimage' ? $('#dPreset').value : undefined };
@@ -782,7 +783,7 @@ $('#chatLog').addEventListener('click', e => {
   if (sgen) {
     const b = blockRegistry[+sgen.dataset.shotgen]; if (!b) return;
     const vidSel = document.querySelector(`[data-vidsel="${sgen.dataset.shotgen}"]`);
-    const veng = sgen.dataset.veng === 'sel' ? (vidSel ? vidSel.value : 'kievideo') : sgen.dataset.veng;
+    const veng = sgen.dataset.veng === 'sel' ? (vidSel ? vidSel.value : 'grok') : sgen.dataset.veng;
     const options = {
       videoEngine: veng,
       aspectRatio: $('#kie-aspect').value,
